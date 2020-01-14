@@ -13,7 +13,7 @@ from test_device import DeviceTestCase, start_bitcoind, TestDeviceConnect, TestD
 
 def coldcard_test_suite(simulator, rpc, userpass, interface):
     # Start the Coldcard simulator
-    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator), '-m'], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL, preexec_fn=os.setsid)
+    coldcard_proc = subprocess.Popen(['python3', os.path.basename(simulator)], cwd=os.path.dirname(simulator), stdout=subprocess.DEVNULL, preexec_fn=os.setsid)
     # Wait for simulator to be up
     while True:
         try:
@@ -62,8 +62,6 @@ def coldcard_test_suite(simulator, rpc, userpass, interface):
             result = self.do_command(self.dev_args + ['backup'])
             self.assertTrue(result['success'])
             self.assertIn('The backup has been written to', result['message'])
-            backup_filename = result['message'].split(' ')[-1]
-            os.remove(backup_filename)
 
         def test_pin(self):
             result = self.do_command(self.dev_args + ['promptpin'])

@@ -4,7 +4,7 @@ from ..hwwclient import HardwareWalletClient
 from ..errors import ActionCanceledError, BadArgumentError, DeviceConnectionError, DeviceFailureError, UnavailableActionError, common_err_msgs, handle_errors
 from .btchip.bitcoinTransaction import bitcoinTransaction
 from .btchip.btchip import btchip
-from .btchip.btchipComm import DongleServer, HIDDongleHIDAPI
+from .btchip.btchipComm import HIDDongleHIDAPI
 from .btchip.btchipException import BTChipException
 from .btchip.btchipUtils import compress_public_key
 import base64
@@ -15,8 +15,6 @@ from ..base58 import get_xpub_fingerprint_hex
 from ..serializations import hash256, hash160, CTransaction
 import logging
 import re
-
-SIMULATOR_PATH = 'tcp:127.0.0.1:9999'
 
 LEDGER_VENDOR_ID = 0x2c97
 LEDGER_DEVICE_IDS = [
@@ -74,19 +72,11 @@ class LedgerClient(HardwareWalletClient):
 
     def __init__(self, path, password=''):
         super(LedgerClient, self).__init__(path, password)
+        device = hid.device()
+        device.open_path(path.encode())
+        device.set_nonblocking(True)
 
-        if path.startswith('tcp'):
-            split_path = path.split(':')
-            server = split_path[1]
-            port = int(split_path[2])
-            self.dongle = DongleServer(server, port, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
-        else:
-            device = hid.device()
-            device.open_path(path.encode())
-            device.set_nonblocking(True)
-
-            self.dongle = HIDDongleHIDAPI(device, True, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
-
+        self.dongle = HIDDongleHIDAPI(device, True, logging.getLogger().getEffectiveLevel() == logging.DEBUG)
         self.app = btchip(self.dongle)
 
     # Must return a dict with the xpub
@@ -349,42 +339,27 @@ class LedgerClient(HardwareWalletClient):
 
 def enumerate(password=''):
     results = []
-    devices = []
     for device_id in LEDGER_DEVICE_IDS:
-        devices.extend(hid.enumerate(LEDGER_VENDOR_ID, device_id))
-    devices.append({'path': SIMULATOR_PATH.encode(), 'interface_number': 0, 'product_id': 1})
+        for d in hid.enumerate(LEDGER_VENDOR_ID, device_id):
+            if ('interface_number' in d and d['interface_number'] == 0
+                    or ('usage_page' in d and d['usage_page'] == 0xffa0)):
+                d_data = {}
 
-    for d in devices:
-        if ('interface_number' in d and d['interface_number'] == 0
-                or ('usage_page' in d and d['usage_page'] == 0xffa0)):
-            d_data = {}
+                path = d['path'].decode()
+                d_data['type'] = 'ledger'
+                d_data['model'] = 'ledger_nano_x' if device_id == 0x0004 else 'ledger_nano_s'
+                d_data['path'] = path
 
-            path = d['path'].decode()
-            d_data['type'] = 'ledger'
-            d_data['model'] = 'ledger_nano_x' if d['product_id'] == 0x0004 else 'ledger_nano_s'
-            d_data['path'] = path
-
-            if path == SIMULATOR_PATH:
-                d_data['model'] += '_simulator'
-
-            client = None
-            with handle_errors(common_err_msgs["enumerate"], d_data):
-                try:
+                client = None
+                with handle_errors(common_err_msgs["enumerate"], d_data):
                     client = LedgerClient(path, password)
                     master_xpub = client.get_pubkey_at_path('m/0h')['xpub']
                     d_data['fingerprint'] = get_xpub_fingerprint_hex(master_xpub)
                     d_data['needs_pin_sent'] = False
                     d_data['needs_passphrase_sent'] = False
-                except BTChipException:
-                    # Ignore simulator if there's an exception, means it isn't there
-                    if path == SIMULATOR_PATH:
-                        continue
-                    else:
-                        raise
 
-            if client:
-                client.close()
+                if client:
+                    client.close()
 
-            results.append(d_data)
-
+                results.append(d_data)
     return results

@@ -119,7 +119,7 @@ class WebUsbTransport(ProtocolBasedTransport):
             usb_id = (dev.getVendorID(), dev.getProductID())
             if usb_id not in TREZORS:
                 continue
-            if not is_vendor_class(dev):
+            if not is_class_vendor_specific_trezor(dev):
                 continue
             try:
                 # workaround for issue #223:
@@ -143,15 +143,16 @@ class WebUsbTransport(ProtocolBasedTransport):
             # For v1 protocol, find debug USB interface for the same serial number
             return WebUsbTransport(self.device, debug=True)
 
-
-def is_vendor_class(dev: "usb1.USBDevice") -> bool:
+# Checks that the first device class is "vendor specific" and that its
+# iInterface is 5 (TREZOR)
+def is_class_vendor_specific_trezor(dev: "usb1.USBDevice") -> bool:
     configurationId = 0
     altSettingId = 0
     return (
-        dev[configurationId][INTERFACE][altSettingId].getClass()
-        == usb1.libusb1.LIBUSB_CLASS_VENDOR_SPEC
+        dev[configurationId][INTERFACE][altSettingId].getClass() == usb1.libusb1.LIBUSB_CLASS_VENDOR_SPEC and
+        dev[configurationId][INTERFACE][altSettingId].getSubClass() == 0 and
+        dev[configurationId][INTERFACE][altSettingId].getDescriptor() == 5
     )
-
 
 def dev_to_str(dev: "usb1.USBDevice") -> str:
     return ":".join(

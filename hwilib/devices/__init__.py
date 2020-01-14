@@ -3,5 +3,6 @@ __all__ = [
     'ledger',
     'keepkey',
     'digitalbitbox',
-    'coldcard'
+    'coldcard',
+    'stm32f4'
 ]

@@ -1,0 +1,2 @@
+#ACTION=="add", SUBSYSTEM=="tty", ENV{ID_VENDOR}=="STMicroelectronics", ENV{ID_MM_CANDIDATE}="0", MODE="0660", TAG+="uaccess", RUN+="/bin/stty -F $devnode 9600 cs8 -cstopb -parenb"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", MODE+="0666"

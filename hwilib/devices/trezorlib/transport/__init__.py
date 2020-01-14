@@ -28,10 +28,13 @@ DEV_TREZOR2 = (0x1209, 0x53C1)
 DEV_TREZOR2_BL = (0x1209, 0x53C0)
 DEV_KEEPKEY = (0x2B24, 0x0001)
 DEV_KEEPKEY_WEBUSB = (0x2B24, 0x0002)
+DEV_STM32F4 = (0x0483, 0x374b)
 
-TREZORS = {DEV_TREZOR1, DEV_TREZOR2, DEV_TREZOR2_BL, DEV_KEEPKEY, DEV_KEEPKEY_WEBUSB}
+TREZORS = {DEV_TREZOR1, DEV_TREZOR2, DEV_TREZOR2_BL, DEV_KEEPKEY,
+        DEV_KEEPKEY_WEBUSB, DEV_STM32F4}
 TREZOR_VENDOR_IDS = {0x534C, 0x1209}
 KEEPKEY_VENDOR_IDS = {0x2B24}
+STM32F4_VENDOR_IDS = {0x0483}
 
 UDEV_RULES_STR = """
 Do you have udev rules installed?
@@ -107,10 +110,11 @@ def all_transports() -> Iterable[Type[Transport]]:
     from .hid import HidTransport
     from .udp import UdpTransport
     from .webusb import WebUsbTransport
+    from .cdcacm import CDCACMTransport
 
     return set(
         cls
-        for cls in (HidTransport, UdpTransport, WebUsbTransport)
+        for cls in (HidTransport, UdpTransport, WebUsbTransport, CDCACMTransport)
         if cls.ENABLED
     )
 
